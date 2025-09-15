@@ -1,0 +1,14 @@
+C:\Users\hoang\source\repos\TH01\BT05\bin\Debug\net7.0\BT05.exe
+C:\Users\hoang\source\repos\TH01\BT05\bin\Debug\net7.0\BT05.deps.json
+C:\Users\hoang\source\repos\TH01\BT05\bin\Debug\net7.0\BT05.runtimeconfig.json
+C:\Users\hoang\source\repos\TH01\BT05\bin\Debug\net7.0\BT05.dll
+C:\Users\hoang\source\repos\TH01\BT05\bin\Debug\net7.0\BT05.pdb
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\BT05.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\BT05.AssemblyInfoInputs.cache
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\BT05.AssemblyInfo.cs
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\BT05.csproj.CoreCompileInputs.cache
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\BT05.dll
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\refint\BT05.dll
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\BT05.pdb
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\BT05.genruntimeconfig.cache
+C:\Users\hoang\source\repos\TH01\BT05\obj\Debug\net7.0\ref\BT05.dll
