@@ -1,0 +1,14 @@
+C:\Users\hoang\source\repos\TH01\BT01\bin\Debug\net7.0\BT01.exe
+C:\Users\hoang\source\repos\TH01\BT01\bin\Debug\net7.0\BT01.deps.json
+C:\Users\hoang\source\repos\TH01\BT01\bin\Debug\net7.0\BT01.runtimeconfig.json
+C:\Users\hoang\source\repos\TH01\BT01\bin\Debug\net7.0\BT01.dll
+C:\Users\hoang\source\repos\TH01\BT01\bin\Debug\net7.0\BT01.pdb
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\BT01.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\BT01.AssemblyInfoInputs.cache
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\BT01.AssemblyInfo.cs
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\BT01.csproj.CoreCompileInputs.cache
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\BT01.dll
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\refint\BT01.dll
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\BT01.pdb
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\BT01.genruntimeconfig.cache
+C:\Users\hoang\source\repos\TH01\BT01\obj\Debug\net7.0\ref\BT01.dll
