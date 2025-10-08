@@ -1,0 +1,15 @@
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\bin\Debug\net7.0\BT04.exe
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\bin\Debug\net7.0\BT04.deps.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\bin\Debug\net7.0\BT04.runtimeconfig.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\bin\Debug\net7.0\BT04.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\bin\Debug\net7.0\BT04.pdb
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.AssemblyInfoInputs.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.AssemblyInfo.cs
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.csproj.CoreCompileInputs.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.sourcelink.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\refint\BT04.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.pdb
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\BT04.genruntimeconfig.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH03\BT04\obj\Debug\net7.0\ref\BT04.dll
