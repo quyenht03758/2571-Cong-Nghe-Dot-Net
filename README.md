@@ -1,4 +1,4 @@
-<img width="1343" height="720" alt="image" src="https://github.com/user-attachments/assets/a6f39070-a601-401d-8df5-a093632c5b59" />﻿# 2571-Cong-Nghe-Dot-Net
+# 2571-Cong-Nghe-Dot-Net
 ## General Info
 
 ##### Student-ID: 22403758
@@ -94,3 +94,4 @@
 ### Câu 3
 
 ### Câu 4
+
