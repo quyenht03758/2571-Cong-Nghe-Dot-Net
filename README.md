@@ -88,10 +88,15 @@
 
 ## Tuần 6
 ### Câu 1
+<img width="217" height="278" alt="image" src="https://github.com/user-attachments/assets/db8438dd-5ebf-4e9b-9c0e-f56a4d5fc405" />
 
 ### Câu 2
+<img width="416" height="174" alt="image" src="https://github.com/user-attachments/assets/5f60b159-6158-40f4-abe1-b624e6c1e5ab" />
 
 ### Câu 3
+<img width="357" height="274" alt="image" src="https://github.com/user-attachments/assets/14ce906d-fc91-4a40-9f02-60e3360731f1" />
 
 ### Câu 4
+<img width="320" height="420" alt="image" src="https://github.com/user-attachments/assets/5d4a5ae6-3f87-4503-b2da-85120ec9bd56" />
+
 
