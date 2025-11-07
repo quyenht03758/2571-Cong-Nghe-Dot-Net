@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CarList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Car>Honda</Car>
+  <Car>BMW</Car>
+  <Car>Ford</Car>
+  <Car>Mazda</Car>
+</CarList>
