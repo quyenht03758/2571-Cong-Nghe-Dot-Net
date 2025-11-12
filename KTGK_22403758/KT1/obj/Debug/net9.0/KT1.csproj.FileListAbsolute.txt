@@ -1,0 +1,15 @@
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\bin\Debug\net9.0\KT1.exe
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\bin\Debug\net9.0\KT1.deps.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\bin\Debug\net9.0\KT1.runtimeconfig.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\bin\Debug\net9.0\KT1.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\bin\Debug\net9.0\KT1.pdb
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.AssemblyInfoInputs.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.AssemblyInfo.cs
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.csproj.CoreCompileInputs.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.sourcelink.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\refint\KT1.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.pdb
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\KT1.genruntimeconfig.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\KTGK_22403758\KT1\obj\Debug\net9.0\ref\KT1.dll
