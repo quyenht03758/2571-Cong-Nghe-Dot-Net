@@ -1,0 +1,15 @@
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\bin\Debug\net9.0\NorthwindLib.deps.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\bin\Debug\net9.0\NorthwindLib.runtimeconfig.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\bin\Debug\net9.0\NorthwindLib.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\bin\Debug\net9.0\NorthwindLib.pdb
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.csproj.AssemblyReference.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.AssemblyInfoInputs.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.AssemblyInfo.cs
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.csproj.CoreCompileInputs.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.sourcelink.json
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\refint\NorthwindLib.dll
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.pdb
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\NorthwindLib.genruntimeconfig.cache
+C:\Users\hoang\source\repos\quyenht03758\2571-Cong-Nghe-Dot-Net\TH10\NorthwindLib\obj\Debug\net9.0\ref\NorthwindLib.dll
