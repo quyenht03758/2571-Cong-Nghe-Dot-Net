@@ -1,0 +1,159 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject ApiClient ApiClient
+@inject ILocalStorageService LocalStorage
+
+<div class="d-flex" style="min-height: 100vh;">
+    <!-- Sidebar -->
+    <nav class="bg-dark text-white p-3" style="width: 250px; min-height: 100vh;">
+        <div class="mb-4">
+            <h4 class="mb-0">
+                <Icon Name="IconName.CloudFill" class="me-2" />
+                K8s Manager
+            </h4>
+        </div>
+
+        <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+                <a href="/" class="nav-link text-white @GetActiveClass("/")">
+                    <Icon Name="IconName.HouseFill" class="me-2" />
+                    Dashboard
+                </a>
+            </li>
+            
+            <!-- Kubernetes Resources -->
+            <li class="nav-item mb-2">
+                <div class="text-white-50 small px-3 mt-3 mb-2">KUBERNETES</div>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/clusters" class="nav-link text-white @GetActiveClass("/clusters")">
+                    <Icon Name="IconName.HddNetworkFill" class="me-2" />
+                    Clusters
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/k8s/pods" class="nav-link text-white @GetActiveClass("/k8s/pods")">
+                    <Icon Name="IconName.Box" class="me-2" />
+                    Pods
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/k8s/deployments" class="nav-link text-white @GetActiveClass("/k8s/deployments")">
+                    <Icon Name="IconName.Boxes" class="me-2" />
+                    Deployments
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/k8s/services" class="nav-link text-white @GetActiveClass("/k8s/services")">
+                    <Icon Name="IconName.Diagram3Fill" class="me-2" />
+                    Services
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/k8s/configmaps" class="nav-link text-white @GetActiveClass("/k8s/configmaps")">
+                    <Icon Name="IconName.FileEarmarkText" class="me-2" />
+                    ConfigMaps
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/k8s/secrets" class="nav-link text-white @GetActiveClass("/k8s/secrets")">
+                    <Icon Name="IconName.ShieldLock" class="me-2" />
+                    Secrets
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/k8s/namespaces" class="nav-link text-white @GetActiveClass("/k8s/namespaces")">
+                    <Icon Name="IconName.FolderSymlink" class="me-2" />
+                    Namespaces
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/k8s/apply" class="nav-link text-white @GetActiveClass("/k8s/apply")">
+                    <Icon Name="IconName.CodeSlash" class="me-2" />
+                    Apply YAML
+                </a>
+            </li>
+            
+            <!-- Management -->
+            <li class="nav-item mb-2">
+                <div class="text-white-50 small px-3 mt-3 mb-2">MANAGEMENT</div>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/templates" class="nav-link text-white @GetActiveClass("/templates")">
+                    <Icon Name="IconName.FileEarmarkCodeFill" class="me-2" />
+                    Templates
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/favorites" class="nav-link text-white @GetActiveClass("/favorites")">
+                    <Icon Name="IconName.StarFill" class="me-2" />
+                    Favorites
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/audit" class="nav-link text-white @GetActiveClass("/audit")">
+                    <Icon Name="IconName.ClipboardDataFill" class="me-2" />
+                    Audit Logs
+                </a>
+            </li>
+            <li class="nav-item mb-2">
+                <a href="/sessions" class="nav-link text-white @GetActiveClass("/sessions")">
+                    <Icon Name="IconName.PersonCircle" class="me-2" />
+                    Sessions
+                </a>
+            </li>
+        </ul>
+
+        <div class="mt-auto pt-4">
+            <hr class="bg-white" />
+            @if (currentUser != null)
+            {
+                <div class="mb-3">
+                    <small class="text-white-50">Logged in as</small>
+                    <div class="text-white fw-bold">@currentUser.Username</div>
+                    <small class="text-white-50">@currentUser.Role</small>
+                </div>
+            }
+            <Button Color="ButtonColor.Danger" Size="ButtonSize.Small" @onclick="Logout" class="w-100">
+                <Icon Name="IconName.BoxArrowRight" class="me-2" />
+                Logout
+            </Button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow-1 p-4 bg-light">
+        <div class="container-fluid">
+            @Body
+        </div>
+    </main>
+</div>
+
+@code {
+    private UserDto? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentUser = await ApiClient.GetCurrentUserAsync();
+        }
+        catch
+        {
+            // If not authenticated, redirect to login
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private string GetActiveClass(string path)
+    {
+        var currentPath = new Uri(Navigation.Uri).PathAndQuery;
+        return currentPath == path ? "active bg-primary" : "";
+    }
+
+    private async Task Logout()
+    {
+        await ApiClient.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

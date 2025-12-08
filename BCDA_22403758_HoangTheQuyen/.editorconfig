@@ -1,0 +1,8 @@
+root = true
+
+[*.cs]
+# IDE0005: Remove unnecessary usings
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_separate_import_directive_groups = false
+dotnet_sort_system_directives_first = true
+csharp_using_directive_placement = outside_namespace:warning

@@ -1,0 +1,325 @@
+using Dapper;
+using K8sManager.Api.Infrastructure;
+using K8sManager.Api.Domain.Entities;
+
+namespace K8sManager.Api.Domain.Repositories.impl;
+
+// ============================================================
+// User Session Repository
+// ============================================================
+
+internal class UserSessionRepository : IUserSessionRepository
+{
+    private readonly DapperConnectionFactory _connectionFactory;
+
+    public UserSessionRepository(DapperConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
+
+    public async Task<UserSession?> GetByTokenAsync(string token)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            SELECT * FROM UserSession 
+            WHERE SessionToken = @Token AND ExpiresAt > SYSUTCDATETIME()";
+        return await conn.QueryFirstOrDefaultAsync<UserSession>(sql, new { Token = token }).ConfigureAwait(false);
+    }
+
+    public async Task<int> CreateAsync(UserSession session)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            INSERT INTO UserSession (UserId, SessionToken, IpAddress, UserAgent, ExpiresAt)
+            VALUES (@UserId, @SessionToken, @IpAddress, @UserAgent, @ExpiresAt)";
+        return await conn.ExecuteAsync(sql, session).ConfigureAwait(false);
+    }
+
+    public async Task<int> DeleteExpiredAsync()
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "DELETE FROM UserSession WHERE ExpiresAt <= SYSUTCDATETIME()";
+        return await conn.ExecuteAsync(sql).ConfigureAwait(false);
+    }
+
+    public async Task<int> DeleteByUserIdAsync(int userId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "DELETE FROM UserSession WHERE UserId = @UserId";
+        return await conn.ExecuteAsync(sql, new { UserId = userId }).ConfigureAwait(false);
+    }
+}
+
+// ============================================================
+// User Cluster Access Repository
+// ============================================================
+
+internal class UserClusterAccessRepository : IUserClusterAccessRepository
+{
+    private readonly DapperConnectionFactory _connectionFactory;
+
+    public UserClusterAccessRepository(DapperConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
+
+    public async Task<IEnumerable<UserClusterAccess>> GetByUserIdAsync(int userId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "SELECT * FROM UserClusterAccess WHERE UserId = @UserId";
+        return await conn.QueryAsync<UserClusterAccess>(sql, new { UserId = userId }).ConfigureAwait(false);
+    }
+
+    public async Task<UserClusterAccess?> GetByUserAndClusterAsync(int userId, int clusterId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "SELECT * FROM UserClusterAccess WHERE UserId = @UserId AND ClusterId = @ClusterId";
+        return await conn.QueryFirstOrDefaultAsync<UserClusterAccess>(sql, new { UserId = userId, ClusterId = clusterId }).ConfigureAwait(false);
+    }
+
+    public async Task<int> CreateAsync(UserClusterAccess access)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            INSERT INTO UserClusterAccess (UserId, ClusterId, CanRead, CanWrite, CanDelete, GrantedBy)
+            VALUES (@UserId, @ClusterId, @CanRead, @CanWrite, @CanDelete, @GrantedBy)";
+        return await conn.ExecuteAsync(sql, access).ConfigureAwait(false);
+    }
+
+    public async Task<int> UpdateAsync(UserClusterAccess access)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            UPDATE UserClusterAccess 
+            SET CanRead = @CanRead, CanWrite = @CanWrite, CanDelete = @CanDelete
+            WHERE Id = @Id";
+        return await conn.ExecuteAsync(sql, access).ConfigureAwait(false);
+    }
+
+    public async Task<int> DeleteAsync(int id)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "DELETE FROM UserClusterAccess WHERE Id = @Id";
+        return await conn.ExecuteAsync(sql, new { Id = id }).ConfigureAwait(false);
+    }
+}
+
+// ============================================================
+// Template Version Repository
+// ============================================================
+
+internal class TemplateVersionRepository : ITemplateVersionRepository
+{
+    private readonly DapperConnectionFactory _connectionFactory;
+
+    public TemplateVersionRepository(DapperConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
+
+    public async Task<IEnumerable<TemplateVersion>> GetByTemplateIdAsync(int templateId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            SELECT * FROM TemplateVersion 
+            WHERE TemplateId = @TemplateId 
+            ORDER BY VersionNumber DESC";
+        return await conn.QueryAsync<TemplateVersion>(sql, new { TemplateId = templateId }).ConfigureAwait(false);
+    }
+
+    public async Task<TemplateVersion?> GetCurrentVersionAsync(int templateId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            SELECT * FROM TemplateVersion 
+            WHERE TemplateId = @TemplateId AND IsCurrent = 1";
+        return await conn.QueryFirstOrDefaultAsync<TemplateVersion>(sql, new { TemplateId = templateId }).ConfigureAwait(false);
+    }
+
+    public async Task<TemplateVersion?> GetByIdAsync(int id)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "SELECT * FROM TemplateVersion WHERE Id = @Id";
+        return await conn.QueryFirstOrDefaultAsync<TemplateVersion>(sql, new { Id = id }).ConfigureAwait(false);
+    }
+
+    public async Task<int> CreateAsync(TemplateVersion version)
+    {
+        using var conn = _connectionFactory.Create();
+
+        // Start transaction to update old current version and insert new one
+        using var transaction = conn.BeginTransaction();
+
+        try
+        {
+            // Set all versions as not current
+            var updateSql = "UPDATE TemplateVersion SET IsCurrent = 0 WHERE TemplateId = @TemplateId";
+            await conn.ExecuteAsync(updateSql, new { version.TemplateId }, transaction).ConfigureAwait(false);
+
+            // Insert new version as current
+            var insertSql = @"
+                INSERT INTO TemplateVersion (TemplateId, VersionNumber, YamlContent, ChangeLog, IsCurrent, CreatedBy)
+                VALUES (@TemplateId, @VersionNumber, @YamlContent, @ChangeLog, 1, @CreatedBy)";
+            var result = await conn.ExecuteAsync(insertSql, version, transaction).ConfigureAwait(false);
+
+            transaction.Commit();
+            return result;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+
+    public async Task<int> SetCurrentVersionAsync(int templateId, int versionNumber)
+    {
+        using var conn = _connectionFactory.Create();
+        using var transaction = conn.BeginTransaction();
+
+        try
+        {
+            // Set all versions as not current
+            var updateAllSql = "UPDATE TemplateVersion SET IsCurrent = 0 WHERE TemplateId = @TemplateId";
+            await conn.ExecuteAsync(updateAllSql, new { TemplateId = templateId }, transaction).ConfigureAwait(false);
+
+            // Set specific version as current
+            var updateSql = @"
+                UPDATE TemplateVersion 
+                SET IsCurrent = 1 
+                WHERE TemplateId = @TemplateId AND VersionNumber = @VersionNumber";
+            var result = await conn.ExecuteAsync(updateSql, new { TemplateId = templateId, VersionNumber = versionNumber }, transaction).ConfigureAwait(false);
+
+            transaction.Commit();
+            return result;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+    }
+}
+
+// ============================================================
+// Port Forward Profile Repository
+// ============================================================
+
+internal class PortForwardProfileRepository : IPortForwardProfileRepository
+{
+    private readonly DapperConnectionFactory _connectionFactory;
+
+    public PortForwardProfileRepository(DapperConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
+
+    public async Task<IEnumerable<PortForwardProfile>> GetByUserIdAsync(int userId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "SELECT * FROM PortForwardProfile WHERE UserId = @UserId ORDER BY Name";
+        return await conn.QueryAsync<PortForwardProfile>(sql, new { UserId = userId }).ConfigureAwait(false);
+    }
+
+    public async Task<PortForwardProfile?> GetByIdAsync(int id)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "SELECT * FROM PortForwardProfile WHERE Id = @Id";
+        return await conn.QueryFirstOrDefaultAsync<PortForwardProfile>(sql, new { Id = id }).ConfigureAwait(false);
+    }
+
+    public async Task<int> CreateAsync(PortForwardProfile profile)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            INSERT INTO PortForwardProfile 
+            (UserId, ClusterId, Name, Namespace, PodName, PodSelector, LocalPort, RemotePort, Description, AutoStart)
+            VALUES 
+            (@UserId, @ClusterId, @Name, @Namespace, @PodName, @PodSelector, @LocalPort, @RemotePort, @Description, @AutoStart)";
+        return await conn.ExecuteAsync(sql, profile).ConfigureAwait(false);
+    }
+
+    public async Task<int> UpdateAsync(PortForwardProfile profile)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            UPDATE PortForwardProfile 
+            SET Name = @Name, Namespace = @Namespace, PodName = @PodName, PodSelector = @PodSelector,
+                LocalPort = @LocalPort, RemotePort = @RemotePort, Description = @Description, 
+                AutoStart = @AutoStart, UpdatedAt = SYSUTCDATETIME()
+            WHERE Id = @Id";
+        return await conn.ExecuteAsync(sql, profile).ConfigureAwait(false);
+    }
+
+    public async Task<int> DeleteAsync(int id)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "DELETE FROM PortForwardProfile WHERE Id = @Id";
+        return await conn.ExecuteAsync(sql, new { Id = id }).ConfigureAwait(false);
+    }
+}
+
+// ============================================================
+// Active Port Forward Repository
+// ============================================================
+
+internal class ActivePortForwardRepository : IActivePortForwardRepository
+{
+    private readonly DapperConnectionFactory _connectionFactory;
+
+    public ActivePortForwardRepository(DapperConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
+
+    public async Task<IEnumerable<ActivePortForward>> GetActiveAsync(int userId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            SELECT * FROM ActivePortForward 
+            WHERE UserId = @UserId AND Status = 'Running'
+            ORDER BY StartedAt DESC";
+        return await conn.QueryAsync<ActivePortForward>(sql, new { UserId = userId }).ConfigureAwait(false);
+    }
+
+    public async Task<ActivePortForward?> GetByIdAsync(int id)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = "SELECT * FROM ActivePortForward WHERE Id = @Id";
+        return await conn.QueryFirstOrDefaultAsync<ActivePortForward>(sql, new { Id = id }).ConfigureAwait(false);
+    }
+
+    public async Task<int> CreateAsync(ActivePortForward forward)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            INSERT INTO ActivePortForward 
+            (ProfileId, UserId, ClusterId, Namespace, PodName, LocalPort, RemotePort, ProcessId, Status)
+            VALUES 
+            (@ProfileId, @UserId, @ClusterId, @Namespace, @PodName, @LocalPort, @RemotePort, @ProcessId, @Status)";
+        return await conn.ExecuteAsync(sql, forward).ConfigureAwait(false);
+    }
+
+    public async Task<int> UpdateStatusAsync(int id, string status, DateTime? stoppedAt = null)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            UPDATE ActivePortForward 
+            SET Status = @Status, StoppedAt = @StoppedAt
+            WHERE Id = @Id";
+        return await conn.ExecuteAsync(sql, new { Id = id, Status = status, StoppedAt = stoppedAt }).ConfigureAwait(false);
+    }
+
+    public async Task<int> StopAllByUserAsync(int userId)
+    {
+        using var conn = _connectionFactory.Create();
+        var sql = @"
+            UPDATE ActivePortForward 
+            SET Status = 'Stopped', StoppedAt = SYSUTCDATETIME()
+            WHERE UserId = @UserId AND Status = 'Running'";
+        return await conn.ExecuteAsync(sql, new { UserId = userId }).ConfigureAwait(false);
+    }
+}
+
+// Continued in next part...
+

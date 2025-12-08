@@ -1,0 +1,593 @@
+@page "/users"
+@layout MainLayout
+@inject ApiClient ApiClient
+@inject ToastService ToastService
+@inject IJSRuntime JSRuntime
+@using BlazorWeb.Models
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="bi bi-people"></i> User Management</h3>
+        <Button Color="ButtonColor.Primary" @onclick="ShowCreateDialog">
+            <i class="bi bi-person-plus"></i> Create User
+        </Button>
+    </div>
+
+    <div class="mb-3 d-flex gap-3">
+        <input type="text" class="form-control" placeholder="Search users by username or email..." @bind="searchTerm" @bind:event="oninput" style="max-width: 400px;" />
+        <select class="form-select" @bind="filterRole" style="max-width: 200px;">
+            <option value="">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Operator">Operator</option>
+            <option value="Viewer">Viewer</option>
+        </select>
+        <select class="form-select" @bind="filterStatus" style="max-width: 200px;">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="locked">Locked</option>
+        </select>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <Spinner />
+            <p class="text-muted mt-2">Loading users...</p>
+        </div>
+    }
+    else if (users.Any())
+    {
+        var filteredUsers = users
+            .Where(u => string.IsNullOrWhiteSpace(searchTerm) || 
+                       u.Username.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                       (u.Email != null && u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)))
+            .Where(u => string.IsNullOrWhiteSpace(filterRole) || u.Role == filterRole)
+            .Where(u => string.IsNullOrWhiteSpace(filterStatus) || 
+                       (filterStatus == "active" && !u.IsLocked) ||
+                       (filterStatus == "locked" && u.IsLocked))
+            .ToList();
+
+        @if (filteredUsers.Any())
+        {
+            <Card>
+                <CardBody>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Full Name</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in filteredUsers)
+                                {
+                                    <tr class="@(user.IsLocked ? "table-danger" : "")">
+                                        <td>
+                                            <strong>@user.Username</strong>
+                                            @if (user.FailedLoginAttempts > 0)
+                                            {
+                                                <Badge Color="BadgeColor.Warning" class="ms-1">@user.FailedLoginAttempts failed</Badge>
+                                            }
+                                        </td>
+                                        <td>@user.Email</td>
+                                        <td>@user.FullName</td>
+                                        <td>
+                                            <Badge Color="@GetRoleBadgeColor(user.Role)">@user.Role</Badge>
+                                        </td>
+                                        <td>
+                                            @if (user.IsLocked)
+                                            {
+                                                <Badge Color="BadgeColor.Danger"><Icon Name="IconName.Lock" /> Locked</Badge>
+                                            }
+                                            else if (user.IsActive)
+                                            {
+                                                <Badge Color="BadgeColor.Success"><Icon Name="IconName.Check" /> Active</Badge>
+                                            }
+                                            else
+                                            {
+                                                <Badge Color="BadgeColor.Secondary">Inactive</Badge>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (user.LastLoginAt.HasValue)
+                                            {
+                                                @user.LastLoginAt.Value.ToString("yyyy-MM-dd HH:mm")
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Never</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <Button Color="ButtonColor.Info" Size="ButtonSize.Small" @onclick="() => ShowViewDialog(user)" title="View Details">
+                                                    <Icon Name="IconName.InfoCircle" />
+                                                </Button>
+                                                <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" @onclick="() => ShowEditDialog(user)" title="Edit">
+                                                    <Icon Name="IconName.Pencil" />
+                                                </Button>
+                                                @if (user.IsLocked)
+                                                {
+                                                    <Button Color="ButtonColor.Success" Size="ButtonSize.Small" @onclick="() => UnlockUser(user)" title="Unlock">
+                                                        <Icon Name="IconName.Unlock" />
+                                                    </Button>
+                                                }
+                                                else
+                                                {
+                                                    <Button Color="ButtonColor.Secondary" Size="ButtonSize.Small" @onclick="() => LockUser(user)" title="Lock">
+                                                        <Icon Name="IconName.Lock" />
+                                                    </Button>
+                                                }
+                                                <Button Color="ButtonColor.Primary" Size="ButtonSize.Small" @onclick="() => ShowResetPasswordDialog(user)" title="Reset Password">
+                                                    <Icon Name="IconName.Key" />
+                                                </Button>
+                                                <Button Color="ButtonColor.Danger" Size="ButtonSize.Small" @onclick="() => DeleteUser(user)" title="Delete">
+                                                    <Icon Name="IconName.Trash" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </CardBody>
+            </Card>
+        }
+        else
+        {
+            <Alert Color="AlertColor.Warning">
+                <i class="bi bi-search"></i> No users found matching the filters
+            </Alert>
+        }
+    }
+    else
+    {
+        <Alert Color="AlertColor.Info">
+            <i class="bi bi-info-circle"></i> No users found. Create your first user!
+        </Alert>
+    }
+</div>
+
+<!-- Create User Modal -->
+<Modal @ref="createModal" Title="Create User" Size="ModalSize.Large">
+    <BodyTemplate>
+        <div class="mb-3">
+            <label class="form-label">Username <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" @bind="newUser.Username" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Password <span class="text-danger">*</span></label>
+            <input type="password" class="form-control" @bind="newUser.Password" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" @bind="newUser.Email" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-control" @bind="newUser.FullName" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Role <span class="text-danger">*</span></label>
+            <select class="form-select" @bind="newUser.Role">
+                <option value="Viewer">Viewer</option>
+                <option value="Operator">Operator</option>
+                <option value="Admin">Admin</option>
+            </select>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideCreateDialog">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="CreateUser" Disabled="isCreating">
+            @if (isCreating) { <Spinner Size="SpinnerSize.Small" /> }
+            Create
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+<!-- Edit User Modal -->
+<Modal @ref="editModal" Title="Edit User" Size="ModalSize.Large">
+    <BodyTemplate>
+        <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" value="@editUser.Username" disabled />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" @bind="editUser.Email" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-control" @bind="editUser.FullName" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Role <span class="text-danger">*</span></label>
+            <select class="form-select" @bind="editUser.Role">
+                <option value="Viewer">Viewer</option>
+                <option value="Operator">Operator</option>
+                <option value="Admin">Admin</option>
+            </select>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideEditDialog">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="ShowUpdateConfirm" Disabled="isUpdating">
+            @if (isUpdating) { <Spinner Size="SpinnerSize.Small" /> }
+            Update
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+<!-- View User Modal -->
+<Modal @ref="viewModal" Title="User Details" Size="ModalSize.Large">
+    <BodyTemplate>
+        @if (selectedUser != null)
+        {
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <strong>Username:</strong> @selectedUser.Username
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Email:</strong> @selectedUser.Email
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Full Name:</strong> @selectedUser.FullName
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Role:</strong> <Badge Color="@GetRoleBadgeColor(selectedUser.Role)">@selectedUser.Role</Badge>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Status:</strong>
+                    @if (selectedUser.IsLocked)
+                    {
+                        <Badge Color="BadgeColor.Danger">Locked</Badge>
+                    }
+                    else if (selectedUser.IsActive)
+                    {
+                        <Badge Color="BadgeColor.Success">Active</Badge>
+                    }
+                    else
+                    {
+                        <Badge Color="BadgeColor.Secondary">Inactive</Badge>
+                    }
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Failed Login Attempts:</strong> @selectedUser.FailedLoginAttempts
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Last Login:</strong> @(selectedUser.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Last Password Changed:</strong> @(selectedUser.LastPasswordChangedAt?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Created:</strong> @selectedUser.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                </div>
+                <div class="col-md-6 mb-3">
+                    <strong>Updated:</strong> @selectedUser.UpdatedAt.ToString("yyyy-MM-dd HH:mm")
+                </div>
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideViewDialog">Close</Button>
+    </FooterTemplate>
+</Modal>
+
+<!-- Reset Password Modal -->
+<Modal @ref="resetPasswordModal" Title="Reset Password">
+    <BodyTemplate>
+        <p>Reset password for user: <strong>@selectedUser?.Username</strong></p>
+        <div class="mb-3">
+            <label class="form-label">New Password <span class="text-danger">*</span></label>
+            <input type="password" class="form-control" @bind="newPassword" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+            <input type="password" class="form-control" @bind="confirmPassword" />
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideResetPasswordDialog">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="ResetPassword">
+            <i class="bi bi-key"></i> Reset Password
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+<!-- Update Confirmation Modal -->
+<Modal @ref="updateConfirmModal" Title="Confirm Update">
+    <BodyTemplate>
+        <p>Are you sure you want to update user <strong>@editUser.Username</strong>?</p>
+        <p class="text-warning"><i class="bi bi-info-circle"></i> This will modify the user configuration.</p>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideUpdateConfirm">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="ConfirmUpdateAction">
+            <i class="bi bi-check-lg"></i> Confirm Update
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+<!-- Delete Confirmation Modal -->
+<Modal @ref="deleteConfirmModal" Title="Confirm Delete">
+    <BodyTemplate>
+        <p>Are you sure you want to delete user <strong>@userToDelete?.Username</strong>?</p>
+        <p class="text-danger"><i class="bi bi-exclamation-triangle"></i> This action cannot be undone.</p>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideDeleteConfirm">Cancel</Button>
+        <Button Color="ButtonColor.Danger" @onclick="ConfirmDeleteAction">
+            <i class="bi bi-trash"></i> Delete
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private List<UserResponse> users = new();
+    private bool isLoading = false;
+    private bool isCreating = false;
+    private bool isUpdating = false;
+    private string searchTerm = "";
+    private string filterRole = "";
+    private string filterStatus = "";
+
+    private Modal createModal = default!;
+    private Modal editModal = default!;
+    private Modal viewModal = default!;
+    private Modal resetPasswordModal = default!;
+    private Modal updateConfirmModal = default!;
+    private Modal deleteConfirmModal = default!;
+
+    private CreateUserRequestDto newUser = new();
+    private UpdateUserRequestDto editUser = new();
+    private UserResponse? selectedUser;
+    private UserResponse? userToDelete;
+    private string newPassword = "";
+    private string confirmPassword = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        try
+        {
+            users = await ApiClient.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Danger, $"Error loading users: {ex.Message}"));
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ShowCreateDialog()
+    {
+        newUser = new CreateUserRequestDto { Role = "Viewer" };
+        await createModal.ShowAsync();
+    }
+
+    private async Task HideCreateDialog()
+    {
+        await createModal.HideAsync();
+    }
+
+    private async Task CreateUser()
+    {
+        if (string.IsNullOrWhiteSpace(newUser.Username) || string.IsNullOrWhiteSpace(newUser.Password) || string.IsNullOrWhiteSpace(newUser.Email))
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Warning, "Username, Password, and Email are required"));
+            return;
+        }
+
+        isCreating = true;
+        try
+        {
+            await ApiClient.CreateUserAsync(newUser);
+            ToastService.Notify(new ToastMessage(ToastType.Success, $"User '{newUser.Username}' created successfully"));
+            await HideCreateDialog();
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Danger, $"Error creating user: {ex.Message}"));
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private async Task ShowEditDialog(UserResponse user)
+    {
+        editUser = new UpdateUserRequestDto
+        {
+            Username = user.Username,
+            Email = user.Email ?? "",
+            FullName = user.FullName,
+            Role = user.Role
+        };
+        await editModal.ShowAsync();
+    }
+
+    private async Task HideEditDialog()
+    {
+        await editModal.HideAsync();
+    }
+
+    private async Task ShowUpdateConfirm()
+    {
+        await updateConfirmModal.ShowAsync();
+    }
+
+    private async Task HideUpdateConfirm()
+    {
+        await updateConfirmModal.HideAsync();
+    }
+
+    private async Task ConfirmUpdateAction()
+    {
+        await updateConfirmModal.HideAsync();
+        
+        isUpdating = true;
+        try
+        {
+            var user = users.First(u => u.Username == editUser.Username);
+            Console.WriteLine($"Updating user {user.Id}: Email={editUser.Email}, FullName={editUser.FullName}, Role={editUser.Role}");
+            await ApiClient.UpdateUserAsync(user.Id, editUser);
+            ToastService.Notify(new ToastMessage(ToastType.Success, $"User '{editUser.Username}' updated successfully"));
+            await HideEditDialog();
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Update error: {ex}");
+            ToastService.Notify(new ToastMessage(ToastType.Danger, $"Error updating user: {ex.Message}"));
+        }
+        finally
+        {
+            isUpdating = false;
+        }
+    }
+
+    private async Task ShowViewDialog(UserResponse user)
+    {
+        selectedUser = user;
+        await viewModal.ShowAsync();
+    }
+
+    private async Task HideViewDialog()
+    {
+        await viewModal.HideAsync();
+        selectedUser = null;
+    }
+
+    private async Task ShowResetPasswordDialog(UserResponse user)
+    {
+        selectedUser = user;
+        newPassword = "";
+        confirmPassword = "";
+        await resetPasswordModal.ShowAsync();
+    }
+
+    private async Task HideResetPasswordDialog()
+    {
+        await resetPasswordModal.HideAsync();
+        selectedUser = null;
+    }
+
+    private async Task ResetPassword()
+    {
+        if (string.IsNullOrWhiteSpace(newPassword))
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Warning, "Password is required"));
+            return;
+        }
+
+        if (newPassword != confirmPassword)
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Warning, "Passwords do not match"));
+            return;
+        }
+
+        if (selectedUser == null) return;
+
+        try
+        {
+            await ApiClient.ResetUserPasswordAsync(selectedUser.Id, newPassword);
+            ToastService.Notify(new ToastMessage(ToastType.Success, $"Password reset for '{selectedUser.Username}' successfully"));
+            await HideResetPasswordDialog();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Danger, $"Error resetting password: {ex.Message}"));
+        }
+    }
+
+    private async Task LockUser(UserResponse user)
+    {
+        try
+        {
+            await ApiClient.LockUserAsync(user.Id);
+            ToastService.Notify(new ToastMessage(ToastType.Success, $"User '{user.Username}' locked"));
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Danger, $"Error locking user: {ex.Message}"));
+        }
+    }
+
+    private async Task UnlockUser(UserResponse user)
+    {
+        try
+        {
+            await ApiClient.UnlockUserAsync(user.Id);
+            ToastService.Notify(new ToastMessage(ToastType.Success, $"User '{user.Username}' unlocked"));
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Danger, $"Error unlocking user: {ex.Message}"));
+        }
+    }
+
+    private async Task DeleteUser(UserResponse user)
+    {
+        userToDelete = user;
+        await deleteConfirmModal.ShowAsync();
+    }
+
+    private async Task HideDeleteConfirm()
+    {
+        await deleteConfirmModal.HideAsync();
+        userToDelete = null;
+    }
+
+    private async Task ConfirmDeleteAction()
+    {
+        if (userToDelete == null) return;
+
+        await deleteConfirmModal.HideAsync();
+
+        try
+        {
+            await ApiClient.DeleteUserAsync(userToDelete.Id);
+            ToastService.Notify(new ToastMessage(ToastType.Success, $"User '{userToDelete.Username}' deleted"));
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new ToastMessage(ToastType.Danger, $"Error deleting user: {ex.Message}"));
+        }
+        finally
+        {
+            userToDelete = null;
+        }
+    }
+
+    private BadgeColor GetRoleBadgeColor(string role)
+    {
+        return role switch
+        {
+            "Admin" => BadgeColor.Danger,
+            "Operator" => BadgeColor.Warning,
+            "Viewer" => BadgeColor.Info,
+            _ => BadgeColor.Secondary
+        };
+    }
+}

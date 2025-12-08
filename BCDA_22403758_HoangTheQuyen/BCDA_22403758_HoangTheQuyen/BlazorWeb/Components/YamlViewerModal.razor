@@ -1,0 +1,193 @@
+<Modal @ref="modal" Title="@Title" Size="ModalSize.ExtraLarge">
+    <BodyTemplate>
+        @if (loading)
+        {
+            <div class="text-center p-5">
+                <Spinner />
+                <p class="mt-3">Loading YAML...</p>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <Alert Color="AlertColor.Danger">
+                <Icon Name="IconName.ExclamationTriangleFill" class="me-2" />
+                @errorMessage
+            </Alert>
+        }
+        else
+        {
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <Button Color="ButtonColor.Secondary" Size="ButtonSize.Small" @onclick="CopyToClipboard" class="me-2">
+                        <Icon Name="IconName.Clipboard" class="me-1" />
+                        Copy
+                    </Button>
+                    <Button Color="@(isEditMode ? ButtonColor.Warning : ButtonColor.Primary)" Size="ButtonSize.Small" @onclick="ToggleEditMode">
+                        <Icon Name="@(isEditMode ? IconName.Eye : IconName.PencilSquare)" class="me-1" />
+                        @(isEditMode ? "View Mode" : "Edit Mode")
+                    </Button>
+                </div>
+                @if (isEditMode)
+                {
+                    <div>
+                        <Button Color="ButtonColor.Success" Size="ButtonSize.Small" @onclick="ApplyChanges" Disabled="@applying">
+                            @if (applying)
+                            {
+                                <Spinner Size="SpinnerSize.Small" class="me-1" />
+                            }
+                            else
+                            {
+                                <Icon Name="IconName.CheckCircle" class="me-1" />
+                            }
+                            Apply Changes
+                        </Button>
+                    </div>
+                }
+            </div>
+
+            @if (isEditMode)
+            {
+                <textarea class="form-control bg-dark text-light font-monospace" 
+                          style="height: 600px; font-size: 12px;" 
+                          @bind="yamlContent" 
+                          @bind:event="oninput"
+                          spellcheck="false"></textarea>
+            }
+            else
+            {
+                <pre class="bg-dark text-light p-3 rounded" style="max-height: 600px; overflow-y: auto;"><code>@yamlContent</code></pre>
+            }
+
+            @if (!string.IsNullOrEmpty(applyMessage))
+            {
+                <Alert Color="@(applySuccess ? AlertColor.Success : AlertColor.Danger)" class="mt-3" Dismissable="true">
+                    <Icon Name="@(applySuccess ? IconName.CheckCircleFill : IconName.ExclamationTriangleFill)" class="me-2" />
+                    @applyMessage
+                </Alert>
+            }
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="Hide">Close</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private Modal modal = default!;
+    private string yamlContent = "";
+    private string originalYaml = "";
+    private bool loading = false;
+    private bool applying = false;
+    private bool isEditMode = false;
+    private string? errorMessage;
+    private string? applyMessage;
+    private bool applySuccess = false;
+
+    [Parameter]
+    public string Title { get; set; } = "YAML";
+
+    [Parameter]
+    public Func<string, Task<ApplyYamlResponse>>? ApplyYamlFunc { get; set; }
+
+    [Inject]
+    public IJSRuntime? JSRuntime { get; set; }
+
+    public async Task ShowAsync(Func<Task<string>> loadYamlFunc)
+    {
+        loading = true;
+        errorMessage = null;
+        applyMessage = null;
+        yamlContent = "";
+        originalYaml = "";
+        isEditMode = false;
+        await modal.ShowAsync();
+        StateHasChanged();
+
+        try
+        {
+            yamlContent = await loadYamlFunc();
+            originalYaml = yamlContent;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading YAML: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    public async Task Hide()
+    {
+        await modal.HideAsync();
+    }
+
+    private void ToggleEditMode()
+    {
+        isEditMode = !isEditMode;
+        applyMessage = null;
+        
+        // Reset to original if switching back to view mode without applying
+        if (!isEditMode)
+        {
+            yamlContent = originalYaml;
+        }
+    }
+
+    private async Task ApplyChanges()
+    {
+        if (ApplyYamlFunc == null)
+        {
+            applyMessage = "Apply function not configured";
+            applySuccess = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(yamlContent))
+        {
+            applyMessage = "YAML content cannot be empty";
+            applySuccess = false;
+            return;
+        }
+
+        applying = true;
+        applyMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApplyYamlFunc(yamlContent);
+            
+            if (result.Success)
+            {
+                applyMessage = result.Message ?? "YAML applied successfully!";
+                applySuccess = true;
+                originalYaml = yamlContent; // Update original after successful apply
+                isEditMode = false; // Switch back to view mode
+            }
+            else
+            {
+                applyMessage = result.Message ?? "Failed to apply YAML";
+                applySuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            applyMessage = $"Error applying YAML: {ex.Message}";
+            applySuccess = false;
+        }
+        finally
+        {
+            applying = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        if (JSRuntime != null)
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", yamlContent);
+    }
+}
