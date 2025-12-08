@@ -1,8 +1,0 @@
-.vs
-.claude
-bin
-Ai/bin
-Api/obj
-obj
-Api/publish
-BlazorWeb/wwwroot/lib
