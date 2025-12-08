@@ -1,1 +1,8 @@
 .vs
+.claude
+BCDA_22403758_HoangTheQuyen/bin
+BCDA_22403758_HoangTheQuyen/Api/bin
+BCDA_22403758_HoangTheQuyen/Api/obj
+BCDA_22403758_HoangTheQuyen/obj
+BCDA_22403758_HoangTheQuyen/Api/publish
+BCDA_22403758_HoangTheQuyen/BlazorWeb/wwwroot/lib

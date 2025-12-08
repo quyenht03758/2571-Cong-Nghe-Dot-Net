@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NorthwindLib")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+754bdd54fe3895eaf60c33a4099575f3af8e8c2c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+22b0044dd92faad50538e1f338bb4bf15470d8b4")]
 [assembly: System.Reflection.AssemblyProductAttribute("NorthwindLib")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NorthwindLib")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

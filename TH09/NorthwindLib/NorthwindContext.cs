@@ -19,6 +19,11 @@ public class NorthwindContext : DbContext
     public DbSet<Product> Products { get; set; } = null!;
 
     /// <summary>
+    /// Customers DbSet
+    /// </summary>
+    public DbSet<Customer> Customers { get; set; } = null!;
+
+    /// <summary>
     /// Constructor
     /// </summary>
     public NorthwindContext()

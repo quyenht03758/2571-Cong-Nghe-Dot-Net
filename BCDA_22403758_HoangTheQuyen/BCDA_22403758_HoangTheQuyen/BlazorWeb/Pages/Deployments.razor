@@ -1,0 +1,366 @@
+@page "/k8s/deployments"
+@layout MainLayout
+@inject ApiClient ApiClient
+@inject IJSRuntime JSRuntime
+@inject ILocalStorageService LocalStorage
+
+<PageTitle>Deployments - K8s Manager</PageTitle>
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>
+            <Icon Name="IconName.Boxes" class="me-2" />
+            Deployments
+        </h2>
+    </div>
+    <div class="col-auto">
+        <div class="d-flex gap-2">
+            <select class="form-select" @bind="selectedNamespace" @bind:after="LoadDeployments" style="width: 200px;">
+                <option value="">Select Namespace...</option>
+                @foreach (var ns in namespaces)
+                {
+                    <option value="@ns.Name">@ns.Name</option>
+                }
+            </select>
+            <Button Color="ButtonColor.Secondary" @onclick="LoadDeployments">
+                <Icon Name="IconName.ArrowClockwise" class="me-2" />
+                Refresh
+            </Button>
+        </div>
+    </div>
+</div>
+
+@if (string.IsNullOrEmpty(selectedNamespace))
+{
+    <Alert Color="AlertColor.Info">
+        <Icon Name="IconName.InfoCircleFill" class="me-2" />
+        Please select a namespace to view deployments
+    </Alert>
+}
+else if (loading)
+{
+    <div class="text-center p-5">
+        <Spinner />
+        <p class="mt-3">Loading deployments...</p>
+    </div>
+}
+else if (error != null)
+{
+    <Alert Color="AlertColor.Danger" Dismissable="true">
+        <Icon Name="IconName.ExclamationTriangleFill" class="me-2" />
+        @error
+    </Alert>
+}
+else if (!deployments.Any())
+{
+    <div class="text-center p-5">
+        <Icon Name="IconName.Boxes" Size="IconSize.x5" class="text-muted mb-3" />
+        <h4>No deployments found</h4>
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var deployment in deployments)
+        {
+            var isFavorited = IsFavorited(deployment);
+            <div class="col-md-6 col-lg-4 mb-4">
+                <Card>
+                    <CardBody>
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                @if (isFavorited)
+                                {
+                                    <Icon Name="IconName.StarFill" class="text-warning me-1" Size="IconSize.x5" />
+                                }
+                                <h5 class="card-title mb-0 d-inline">@deployment.Name</h5>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <Button Color="ButtonColor.Primary" Size="ButtonSize.Small" @onclick="() => ShowScaleDialog(deployment)" title="Scale">
+                                    <Icon Name="IconName.ArrowsExpand" />
+                                </Button>
+                                <Button Color="ButtonColor.Success" Size="ButtonSize.Small" @onclick="() => ShowYaml(deployment)" title="View YAML">
+                                    <Icon Name="IconName.CodeSlash" />
+                                </Button>
+                                <Button Color="ButtonColor.Danger" Size="ButtonSize.Small" @onclick="() => ConfirmDeleteDeployment(deployment)" title="Delete">
+                                    <Icon Name="IconName.Trash" />
+                                </Button>
+                                @if (!isFavorited)
+                                {
+                                    <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" @onclick="() => AddToFavorite(deployment)" title="Add to Favorites">
+                                        <Icon Name="IconName.Star" />
+                                    </Button>
+                                }
+                                else
+                                {
+                                    <Button Color="ButtonColor.Secondary" Size="ButtonSize.Small" @onclick="() => RemoveFromFavorite(deployment)" title="Remove from Favorites">
+                                        <Icon Name="IconName.StarFill" />
+                                    </Button>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <Badge Color="GetDeploymentStatusColor(deployment.Replicas, deployment.ReadyReplicas)">
+                                @deployment.ReadyReplicas / @deployment.Replicas Ready
+                            </Badge>
+                        </div>
+                        
+                        <div class="text-muted small mb-3">
+                            <div><strong>Namespace:</strong> @deployment.Namespace</div>
+                            <div><strong>Available:</strong> @deployment.AvailableReplicas</div>
+                            <div><strong>Created:</strong> @GetAge(deployment.CreatedAt)</div>
+                        </div>
+
+                        @if (deployment.Labels != null && deployment.Labels.Any())
+                        {
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var label in deployment.Labels.Take(3))
+                                {
+                                    <Badge Color="BadgeColor.Secondary"><small>@label.Key=@label.Value</small></Badge>
+                                }
+                                @if (deployment.Labels.Count > 3)
+                                {
+                                    <Badge Color="BadgeColor.Light"><small>+@(deployment.Labels.Count - 3) more</small></Badge>
+                                }
+                            </div>
+                        }
+                    </CardBody>
+                </Card>
+            </div>
+        }
+    </div>
+}
+
+<!-- Scale Dialog -->
+<Modal @ref="scaleModal" Title="@($"Scale: {selectedDeployment?.Name}")">
+    <BodyTemplate>
+        @if (selectedDeployment != null)
+        {
+            <p>Current replicas: <strong>@selectedDeployment.Replicas</strong></p>
+            <p>Ready replicas: <strong>@selectedDeployment.ReadyReplicas</strong></p>
+            
+            <div class="mb-3">
+                <label class="form-label">New replica count:</label>
+                <input type="number" class="form-control" @bind="newReplicaCount" min="0" max="100" />
+            </div>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideScaleDialog">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="ScaleDeployment" Disabled="scaling">
+            @if (scaling)
+            {
+                <Spinner Size="SpinnerSize.Small" class="me-2" />
+            }
+            Scale
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+<!-- YAML Viewer Modal -->
+<YamlViewerModal @ref="yamlViewerModal" 
+                 Title="Deployment YAML" 
+                 ApplyYamlFunc="@(yaml => ApiClient.ApplyYamlAsync(new ApplyYamlRequest(yaml)))" />
+
+@code {
+    private List<K8sNamespaceDto> namespaces = new();
+    private List<K8sDeploymentDto> deployments = new();
+    private string selectedNamespace = "";
+    private bool loading;
+    private string? error;
+    
+    private Modal scaleModal = default!;
+    private YamlViewerModal? yamlViewerModal;
+    private K8sDeploymentDto? selectedDeployment;
+    private List<FavoriteDto> favorites = new();
+    private int newReplicaCount;
+    private bool scaling;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNamespaces();
+    }
+
+    private async Task LoadNamespaces()
+    {
+        try
+        {
+            favorites = await ApiClient.GetFavoritesAsync();
+            namespaces = await ApiClient.GetNamespacesAsync();
+            if (namespaces.Any())
+            {
+                var savedNamespace = await LocalStorage.GetItemAsStringAsync("deployments_selected_namespace");
+                if (!string.IsNullOrEmpty(savedNamespace) && namespaces.Any(ns => ns.Name == savedNamespace))
+                {
+                    selectedNamespace = savedNamespace;
+                }
+                else
+                {
+                    selectedNamespace = namespaces.First().Name;
+                }
+                await LoadDeployments();
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load namespaces: {ex.Message}";
+        }
+    }
+
+    private async Task LoadDeployments()
+    {
+        if (string.IsNullOrEmpty(selectedNamespace)) return;
+
+        await LocalStorage.SetItemAsStringAsync("deployments_selected_namespace", selectedNamespace);
+
+        loading = true;
+        error = null;
+        
+        try
+        {
+            deployments = await ApiClient.GetDeploymentsAsync(selectedNamespace);
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load deployments: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ShowScaleDialog(K8sDeploymentDto deployment)
+    {
+        selectedDeployment = deployment;
+        newReplicaCount = deployment.Replicas;
+        await scaleModal.ShowAsync();
+    }
+
+    private async Task HideScaleDialog()
+    {
+        await scaleModal.HideAsync();
+    }
+
+    private async Task ScaleDeployment()
+    {
+        if (selectedDeployment == null) return;
+
+        scaling = true;
+        
+        try
+        {
+            await ApiClient.ScaleDeploymentAsync(selectedDeployment.Namespace, selectedDeployment.Name, newReplicaCount);
+            await HideScaleDialog();
+            await LoadDeployments();
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to scale deployment: {ex.Message}";
+        }
+        finally
+        {
+            scaling = false;
+        }
+    }
+
+    private async Task ShowYaml(K8sDeploymentDto deployment)
+    {
+        yamlViewerModal ??= new();
+        await yamlViewerModal.ShowAsync(async () => await ApiClient.GetDeploymentYamlAsync(deployment.Namespace, deployment.Name));
+    }
+
+    private async Task AddToFavorite(K8sDeploymentDto deployment)
+    {
+        try
+        {
+            if (IsFavorited(deployment))
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Deployment '{deployment.Name}' is already in favorites!");
+                return;
+            }
+
+            var request = new CreateFavoriteRequest(
+                ResourceType: "Deployment",
+                ResourceName: deployment.Name,
+                Namespace: deployment.Namespace,
+                Notes: $"Deployment with {deployment.Replicas} replica(s)"
+            );
+            await ApiClient.CreateFavoriteAsync(request);
+            favorites = await ApiClient.GetFavoritesAsync();
+            await JSRuntime.InvokeVoidAsync("alert", $"Deployment '{deployment.Name}' added to favorites!");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to add to favorites: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveFromFavorite(K8sDeploymentDto deployment)
+    {
+        try
+        {
+            var favorite = favorites.FirstOrDefault(f => 
+                f.ResourceKind == "Deployment" && 
+                f.ResourceName == deployment.Name && 
+                f.Namespace == deployment.Namespace);
+            
+            if (favorite != null)
+            {
+                await ApiClient.DeleteFavoriteAsync(favorite.Id);
+                favorites = await ApiClient.GetFavoritesAsync(); // Refresh
+                await JSRuntime.InvokeVoidAsync("alert", $"Deployment '{deployment.Name}' removed from favorites!");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to remove from favorites: {ex.Message}");
+        }
+    }
+
+    private bool IsFavorited(K8sDeploymentDto deployment)
+    {
+        return favorites.Any(f => 
+            f.ResourceKind == "Deployment" && 
+            f.ResourceName == deployment.Name && 
+            f.Namespace == deployment.Namespace);
+    }
+
+    private async Task ConfirmDeleteDeployment(K8sDeploymentDto deployment)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete deployment '{deployment.Name}' in namespace '{deployment.Namespace}'? This action cannot be undone.");
+        if (confirmed)
+        {
+            try
+            {
+                await ApiClient.DeleteDeploymentAsync(deployment.Namespace, deployment.Name);
+                await JSRuntime.InvokeVoidAsync("alert", $"Deployment '{deployment.Name}' deleted successfully!");
+                await LoadDeployments(); // Refresh list
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Failed to delete deployment: {ex.Message}");
+            }
+        }
+    }
+
+    private BadgeColor GetDeploymentStatusColor(int replicas, int readyReplicas)
+    {
+        if (readyReplicas == replicas && replicas > 0)
+            return BadgeColor.Success;
+        if (readyReplicas > 0)
+            return BadgeColor.Warning;
+        return BadgeColor.Danger;
+    }
+
+    private string GetAge(DateTime createdAt)
+    {
+        var age = DateTime.UtcNow - createdAt;
+        if (age.TotalDays >= 1)
+            return $"{(int)age.TotalDays}d ago";
+        if (age.TotalHours >= 1)
+            return $"{(int)age.TotalHours}h ago";
+        return $"{(int)age.TotalMinutes}m ago";
+    }
+}

@@ -1,0 +1,293 @@
+@page "/k8s/configmaps"
+@layout MainLayout
+@inject ApiClient ApiClient
+@inject ILocalStorageService LocalStorage
+@inject IJSRuntime JSRuntime
+
+<PageTitle>ConfigMaps - K8s Manager</PageTitle>
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>
+            <Icon Name="IconName.FileEarmarkText" class="me-2" />
+            ConfigMaps
+        </h2>
+        <p class="text-muted">View Kubernetes ConfigMaps</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label class="form-label">Namespace</label>
+        <select class="form-select" @bind="selectedNamespace" @bind:after="LoadConfigMaps">
+            <option value="">Select namespace...</option>
+            @foreach (var ns in namespaces)
+            {
+                <option value="@ns.Name">@ns.Name</option>
+            }
+        </select>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <Spinner />
+        <p class="mt-3">Loading ConfigMaps...</p>
+    </div>
+}
+else if (error != null)
+{
+    <Alert Color="AlertColor.Danger" Dismissable="true">
+        <Icon Name="IconName.ExclamationTriangleFill" class="me-2" />
+        @error
+    </Alert>
+}
+else if (string.IsNullOrEmpty(selectedNamespace))
+{
+    <div class="text-center p-5">
+        <Icon Name="IconName.FileEarmarkText" Size="IconSize.x5" class="text-muted mb-3" />
+        <h4>Select a namespace</h4>
+        <p class="text-muted">Choose a namespace to view ConfigMaps</p>
+    </div>
+}
+else if (!configMaps.Any())
+{
+    <div class="text-center p-5">
+        <Icon Name="IconName.FileEarmarkText" Size="IconSize.x5" class="text-muted mb-3" />
+        <h4>No ConfigMaps found</h4>
+        <p class="text-muted">No ConfigMaps in namespace @selectedNamespace</p>
+    </div>
+}
+else
+{
+    <Card>
+        <CardBody>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Namespace</th>
+                            <th>Data Keys</th>
+                            <th>Age</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cm in configMaps)
+                        {
+                            var isFavorited = IsFavorited(cm);
+                            <tr class="@(isFavorited ? "table-warning" : "")">
+                                <td>
+                                    @if (isFavorited)
+                                    {
+                                        <Icon Name="IconName.StarFill" class="text-warning me-1" Size="IconSize.x5" />
+                                    }
+                                    <Icon Name="IconName.FileEarmarkText" class="me-2" />
+                                    <strong>@cm.Name</strong>
+                                </td>
+                                <td>
+                                    <Badge Color="BadgeColor.Primary">@cm.Namespace</Badge>
+                                </td>
+                                <td>
+                                    <Badge Color="BadgeColor.Info">@cm.DataCount keys</Badge>
+                                </td>
+                                <td>
+                                    <small>@GetAge(cm.CreatedAt)</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <Button Color="ButtonColor.Success" Size="ButtonSize.Small" @onclick="() => ShowYaml(cm)">
+                                            <Icon Name="IconName.FileEarmarkCode" class="me-1" />
+                                            YAML
+                                        </Button>
+                                        <Button Color="ButtonColor.Danger" Size="ButtonSize.Small" @onclick="() => ConfirmDeleteConfigMap(cm)">
+                                            <Icon Name="IconName.Trash" class="me-1" />
+                                            Delete
+                                        </Button>
+                                        @if (!isFavorited)
+                                        {
+                                            <Button Color="ButtonColor.Warning" Size="ButtonSize.Small" @onclick="() => AddToFavorite(cm)" title="Add to Favorites">
+                                                <Icon Name="IconName.Star" class="me-1" />
+                                                Favorite
+                                            </Button>
+                                        }
+                                        else
+                                        {
+                                            <Button Color="ButtonColor.Secondary" Size="ButtonSize.Small" @onclick="() => RemoveFromFavorite(cm)" title="Remove from Favorites">
+                                                <Icon Name="IconName.StarFill" class="me-1" />
+                                                Favorited
+                                            </Button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </CardBody>
+    </Card>
+}
+
+<YamlViewerModal @ref="yamlViewerModal" 
+                 Title="ConfigMap YAML" 
+                 ApplyYamlFunc="@(yaml => ApiClient.ApplyYamlAsync(new ApplyYamlRequest(yaml)))" />
+
+@code {
+    private List<K8sNamespaceDto> namespaces = new();
+    private List<K8sConfigMapDto> configMaps = new();
+    private string selectedNamespace = "";
+    private bool loading;
+    private string? error;
+    private YamlViewerModal? yamlViewerModal;
+    private List<FavoriteDto> favorites = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNamespaces();
+    }
+
+    private async Task LoadNamespaces()
+    {
+        try
+        {
+            favorites = await ApiClient.GetFavoritesAsync();
+            namespaces = await ApiClient.GetNamespacesAsync();
+            if (namespaces.Any())
+            {
+                var savedNamespace = await LocalStorage.GetItemAsStringAsync("configmaps_selected_namespace");
+                if (!string.IsNullOrEmpty(savedNamespace) && namespaces.Any(ns => ns.Name == savedNamespace))
+                {
+                    selectedNamespace = savedNamespace;
+                }
+                else
+                {
+                    selectedNamespace = namespaces.First().Name;
+                }
+                await LoadConfigMaps();
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load namespaces: {ex.Message}";
+        }
+    }
+
+    private async Task LoadConfigMaps()
+    {
+        if (string.IsNullOrEmpty(selectedNamespace))
+            return;
+
+        await LocalStorage.SetItemAsStringAsync("configmaps_selected_namespace", selectedNamespace);
+
+        loading = true;
+        error = null;
+
+        try
+        {
+            configMaps = await ApiClient.GetConfigMapsAsync(selectedNamespace);
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load ConfigMaps: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ShowYaml(K8sConfigMapDto configMap)
+    {
+        if (yamlViewerModal == null) return;
+        await yamlViewerModal.ShowAsync(async () => await ApiClient.GetConfigMapYamlAsync(configMap.Namespace, configMap.Name));
+    }
+
+    private async Task AddToFavorite(K8sConfigMapDto configMap)
+    {
+        try
+        {
+            if (IsFavorited(configMap))
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"ConfigMap '{configMap.Name}' is already in favorites!");
+                return;
+            }
+
+            var request = new CreateFavoriteRequest(
+                ResourceType: "ConfigMap",
+                ResourceName: configMap.Name,
+                Namespace: configMap.Namespace,
+                Notes: $"ConfigMap with {configMap.DataCount} data keys"
+            );
+            await ApiClient.CreateFavoriteAsync(request);
+            favorites = await ApiClient.GetFavoritesAsync();
+            await JSRuntime.InvokeVoidAsync("alert", $"ConfigMap '{configMap.Name}' added to favorites!");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to add to favorites: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveFromFavorite(K8sConfigMapDto configMap)
+    {
+        try
+        {
+            var favorite = favorites.FirstOrDefault(f => 
+                f.ResourceKind == "ConfigMap" && 
+                f.ResourceName == configMap.Name && 
+                f.Namespace == configMap.Namespace);
+            
+            if (favorite != null)
+            {
+                await ApiClient.DeleteFavoriteAsync(favorite.Id);
+                favorites = await ApiClient.GetFavoritesAsync(); // Refresh
+                await JSRuntime.InvokeVoidAsync("alert", $"ConfigMap '{configMap.Name}' removed from favorites!");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to remove from favorites: {ex.Message}");
+        }
+    }
+
+    private bool IsFavorited(K8sConfigMapDto configMap)
+    {
+        return favorites.Any(f => 
+            f.ResourceKind == "ConfigMap" && 
+            f.ResourceName == configMap.Name && 
+            f.Namespace == configMap.Namespace);
+    }
+
+    private async Task ConfirmDeleteConfigMap(K8sConfigMapDto configMap)
+    {
+        try
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+                $"Are you sure you want to delete ConfigMap '{configMap.Name}' from namespace '{configMap.Namespace}'?");
+            
+            if (confirmed)
+            {
+                await ApiClient.DeleteConfigMapAsync(configMap.Namespace, configMap.Name);
+                await JSRuntime.InvokeVoidAsync("alert", $"ConfigMap '{configMap.Name}' deleted successfully!");
+                await LoadConfigMaps(); // Refresh the list
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to delete ConfigMap: {ex.Message}");
+        }
+    }
+
+    private string GetAge(DateTime createdAt)
+    {
+        var age = DateTime.UtcNow - createdAt;
+        if (age.TotalDays >= 1)
+            return $"{(int)age.TotalDays}d";
+        if (age.TotalHours >= 1)
+            return $"{(int)age.TotalHours}h";
+        return $"{(int)age.TotalMinutes}m";
+    }
+}

@@ -1,0 +1,218 @@
+@page "/k8s/namespaces"
+@layout MainLayout
+@inject ApiClient ApiClient
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Namespaces - K8s Manager</PageTitle>
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>
+            <Icon Name="IconName.FolderFill" class="me-2" />
+            Namespaces
+        </h2>
+        <p class="text-muted">Manage Kubernetes Namespaces</p>
+    </div>
+    <div class="col-auto">
+        <Button Color="ButtonColor.Primary" @onclick="ShowCreateModal">
+            <Icon Name="IconName.PlusCircleFill" class="me-2" />
+            Create Namespace
+        </Button>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="text-center p-5">
+        <Spinner />
+        <p class="mt-3">Loading namespaces...</p>
+    </div>
+}
+else if (error != null)
+{
+    <Alert Color="AlertColor.Danger" Dismissable="true">
+        <Icon Name="IconName.ExclamationTriangleFill" class="me-2" />
+        @error
+    </Alert>
+}
+else if (!namespaces.Any())
+{
+    <div class="text-center p-5">
+        <Icon Name="IconName.FolderFill" Size="IconSize.x5" class="text-muted mb-3" />
+        <h4>No namespaces found</h4>
+        <p class="text-muted">Unable to load namespaces from cluster</p>
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var ns in namespaces)
+        {
+            <div class="col-md-4 mb-4">
+                <Card>
+                    <CardBody>
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h5 class="card-title mb-1">
+                                    <Icon Name="IconName.FolderFill" class="me-2" />
+                                    @ns.Name
+                                </h5>
+                                <Badge Color="GetStatusColor(ns.Status)">@ns.Status</Badge>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <Icon Name="IconName.Clock" class="me-1" />
+                                Created: @GetAge(ns.CreatedAt)
+                            </small>
+                        </div>
+                        
+                        @if (ns.Labels != null && ns.Labels.Any())
+                        {
+                            <div class="mt-3">
+                                <small class="text-muted d-block mb-2">Labels:</small>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var label in ns.Labels.Take(3))
+                                    {
+                                        <Badge Color="BadgeColor.Secondary">
+                                            <small>@label.Key: @label.Value</small>
+                                        </Badge>
+                                    }
+                                    @if (ns.Labels.Count > 3)
+                                    {
+                                        <Badge Color="BadgeColor.Light">
+                                            <small>+@(ns.Labels.Count - 3) more</small>
+                                        </Badge>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </CardBody>
+                </Card>
+            </div>
+        }
+    </div>
+}
+
+<!-- Create Namespace Modal -->
+<Modal @ref="createModal" Title="Create Namespace">
+    <BodyTemplate>
+        @if (createError != null)
+        {
+            <Alert Color="AlertColor.Danger" Dismissable="true">
+                <Icon Name="IconName.ExclamationTriangleFill" class="me-2" />
+                @createError
+            </Alert>
+        }
+        
+        <div class="mb-3">
+            <label class="form-label">Namespace Name *</label>
+            <input type="text" class="form-control" @bind="newNamespaceName" placeholder="my-namespace" />
+            <small class="text-muted">Must be lowercase alphanumeric with dashes</small>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideCreateModal">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="CreateNamespace" Disabled="creating">
+            @if (creating)
+            {
+                <Spinner Size="SpinnerSize.Small" class="me-2" />
+            }
+            Create
+        </Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private List<K8sNamespaceDto> namespaces = new();
+    private bool loading = true;
+    private string? error;
+    private Modal createModal = default!;
+    private string newNamespaceName = "";
+    private bool creating;
+    private string? createError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNamespaces();
+    }
+
+    private async Task LoadNamespaces()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            namespaces = await ApiClient.GetNamespacesAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load namespaces: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ShowCreateModal()
+    {
+        newNamespaceName = "";
+        createError = null;
+        await createModal.ShowAsync();
+    }
+
+    private async Task HideCreateModal()
+    {
+        await createModal.HideAsync();
+    }
+
+    private async Task CreateNamespace()
+    {
+        if (string.IsNullOrWhiteSpace(newNamespaceName))
+        {
+            createError = "Namespace name is required";
+            return;
+        }
+
+        creating = true;
+        createError = null;
+
+        try
+        {
+            await ApiClient.CreateNamespaceAsync(newNamespaceName);
+            await HideCreateModal();
+            await LoadNamespaces();
+        }
+        catch (Exception ex)
+        {
+            createError = $"Failed to create namespace: {ex.Message}";
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+
+    private BadgeColor GetStatusColor(string status)
+    {
+        return status.ToLower() switch
+        {
+            "active" => BadgeColor.Success,
+            "terminating" => BadgeColor.Warning,
+            _ => BadgeColor.Secondary
+        };
+    }
+
+    private string GetAge(DateTime createdAt)
+    {
+        var age = DateTime.UtcNow - createdAt;
+        if (age.TotalDays >= 1)
+            return $"{(int)age.TotalDays}d ago";
+        if (age.TotalHours >= 1)
+            return $"{(int)age.TotalHours}h ago";
+        return $"{(int)age.TotalMinutes}m ago";
+    }
+}

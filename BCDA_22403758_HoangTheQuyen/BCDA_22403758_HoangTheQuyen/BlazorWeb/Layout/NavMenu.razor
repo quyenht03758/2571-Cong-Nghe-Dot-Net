@@ -1,0 +1,97 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">BlazorWeb</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="pods">
+                <span class="bi bi-box-nav-menu" aria-hidden="true"></span> Pods
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="deployments">
+                <span class="bi bi-layers-nav-menu" aria-hidden="true"></span> Deployments
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="services">
+                <span class="bi bi-diagram-3-nav-menu" aria-hidden="true"></span> Services
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="configmaps">
+                <span class="bi bi-file-text-nav-menu" aria-hidden="true"></span> ConfigMaps
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="secrets">
+                <span class="bi bi-key-nav-menu" aria-hidden="true"></span> Secrets
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="namespaces">
+                <span class="bi bi-folder-nav-menu" aria-hidden="true"></span> Namespaces
+            </NavLink>
+        </div>
+        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="templates">
+                <span class="bi bi-file-earmark-code-nav-menu" aria-hidden="true"></span> Templates
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="favorites">
+                <span class="bi bi-star-nav-menu" aria-hidden="true"></span> Favorites
+            </NavLink>
+        </div>
+        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="users">
+                <span class="bi bi-people-nav-menu" aria-hidden="true"></span> Users
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="clusters">
+                <span class="bi bi-server-nav-menu" aria-hidden="true"></span> Clusters
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="audit">
+                <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span> Audit Logs
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="reports">
+                <span class="bi bi-graph-up-nav-menu" aria-hidden="true"></span> Reports
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="sessions">
+                <span class="bi bi-clock-history-nav-menu" aria-hidden="true"></span> Sessions
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}
